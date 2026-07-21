@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FIFA World Cup 2026 · Analítica Web</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="worldcup26_styles.css">
+</head>
+
+<body>
+<header>
+  <div class="logo-mark" aria-hidden="true">
+    <svg viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="13" cy="13" r="11" stroke="#0A0A0A" stroke-width="2"/>
+      <path d="M7 13l4 4 8-8" stroke="#0A0A0A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </div>
+  <div class="header-titles">
+    <h1>World Cup 2026 · Suite Analítica</h1>
+    <p>Cruce de Datos y Métricas Avanzadas · ISW-521</p>
+  </div>
+  <span class="header-badge" id="apiStatus">API worldcup26.ir</span>
+</header>
+
+<nav class="app-nav">
+  <button class="nav-tab active" data-target="sectionRuta">2.1 Ruta Campeón</button>
+  <button class="nav-tab" data-target="sectionGoleadas">2.2 Goleadas</button>
+  <button class="nav-tab" data-target="sectionMuro">2.3 El Muro</button>
+  <button class="nav-tab" data-target="sectionEstadios">2.4 Estadios</button>
+  <button class="nav-tab" data-target="sectionRadar">2.5 Radar Empates</button>
+</nav>
+
+<main>
+
+  <section id="sectionRuta" class="app-section">
+    <div class="alert-banner resilience-banner-red" id="alertBanner" role="alert" aria-live="assertive">
+      <span class="alert-icon">⚡</span>
+      <span class="alert-text">Cargando estado de la sede...</span>
+    </div>
+
+    <section class="selector-panel" aria-label="Selección de equipo">
+      <div class="selector-group">
+        <label for="teamSelect">Selecciona un equipo</label>
+        <select id="teamSelect" disabled aria-live="polite">
+          <option value="">— Cargando equipos…</option>
+        </select>
+      </div>
+    </section>
+
+    <section class="team-info" id="teamInfo" aria-label="Información del equipo seleccionado">
+      <div class="team-flag"><img src="" alt="Bandera" id="teamFlagImg"></div>
+      <div class="team-details"><h2 class="team-name" id="teamName">—</h2></div>
+      <div class="stat-cell"><span class="stat-num" id="statGames">—</span><span class="stat-label">Partidos</span></div>
+      <div class="stat-cell"><span class="stat-num" id="statCities">—</span><span class="stat-label">Ciudades</span></div>
+      <div class="stat-cell"><span class="stat-num" id="statHome">—</span><span class="stat-label">Locales</span></div>
+      <div class="stat-cell"><span class="stat-num" id="statAway">—</span><span class="stat-label">Visitantes</span></div>
+    </section>
+
+    <div class="cities-section" id="citiesSection">
+      <p class="cities-title">Ciudades sede del itinerario</p>
+      <div class="cities-chips" id="citiesChips"></div>
+    </div>
+
+    <div class="section-eyebrow" id="sectionEyebrow">
+      <span class="eyebrow-label">Partidos del equipo</span>
+      <div class="eyebrow-line"></div>
+      <span class="eyebrow-count" id="eyebrowCount">0</span>
+    </div>
+
+    <div class="cards-grid" id="cardsGrid" aria-live="polite"></div>
+  </section>
+
+  <section id="sectionGoleadas" class="app-section app-section-hidden">
+    <div class="alert-banner resilience-banner-gold" id="teamsBackoffAlert" role="alert" aria-live="assertive">
+      <span class="alert-icon">⚠️</span>
+      <span class="alert-text">Modo de Respaldo Activo.</span>
+    </div>
+
+    <div class="section-eyebrow visible">
+      <span class="eyebrow-label">Partidos con Diferencia ≥ 3 Goles</span>
+      <div class="eyebrow-line"></div>
+      <span class="eyebrow-count" id="goleadasCount">0</span>
+    </div>
+    <div class="cards-grid" id="goleadasGrid" aria-live="polite"></div>
+  </section>
+
+  <section id="sectionMuro" class="app-section app-section-hidden">
+    <div class="section-eyebrow visible">
+      <span class="eyebrow-label">Top 5 - Las Mejores Defensas</span>
+      <div class="eyebrow-line"></div>
+    </div>
+    <div id="muroGrid" class="cards-grid" aria-live="polite"></div>
+  </section>
+
+  <section id="sectionEstadios" class="app-section app-section-hidden">
+    <div class="alert-banner resilience-banner-red" id="estadiosErrorBanner" role="alert" aria-live="assertive">
+      <span class="alert-icon">⏳</span>
+      <span class="alert-text">Esperando conexión con el módulo de partidos...</span>
+    </div>
+
+    <div class="section-eyebrow visible">
+      <span class="eyebrow-label">Asistencia Potencial por Sede</span>
+      <div class="eyebrow-line"></div>
+    </div>
+    <div id="estadiosGrid" class="cards-grid" aria-live="polite"></div>
+  </section>
+
+  <section id="sectionRadar" class="app-section app-section-hidden">
+    <div class="section-eyebrow visible">
+      <span class="eyebrow-label">Matriz de Empates Registrados por Grupo</span>
+      <div class="eyebrow-line"></div>
+    </div>
+    <div id="radarContainer" class="radar-matrix-container"></div>
+  </section>
+
+</main>
+
+<footer>
+  <span>Datos: <code>worldcup26.ir</code> · Catálogo Completo (Categoría A)</span>
+  <span>ISW-521 · Bladimir Arroyo B.</span>
+</footer>
+
+<script src="worldcup26_app.js" defer></script>
+</body>
+</html>
