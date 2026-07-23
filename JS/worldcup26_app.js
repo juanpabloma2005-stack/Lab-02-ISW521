@@ -90,7 +90,7 @@ function populateTeamSelector() {
 function renderRutaCampeon(teamId) {
   const team = state.teams.find(t => Number(t.id) === teamId);
   if (!team) return;
-
+  
   const teamInfo = document.getElementById("teamInfo");
   teamInfo.classList.add("visible");
   document.getElementById("teamFlagImg").src = team.flag;
@@ -121,8 +121,8 @@ function renderRutaCampeon(teamId) {
     if (state.stadiumsError || !stadium) {
       errClass = "stadium-error";
     } else {
-      stadName = stadium.name_en || stadium.name || stadium.title || "Estadio Sede";
-      cityStr = stadium.city_en || "Ciudad Sede";
+      stadName = stadium.name_en ?? "Estadio Sede";
+      cityStr = stadium.city_en ?? "Ciudad Sede";
       capStr = stadium.capacity ? Number(stadium.capacity).toLocaleString() : "—";
       if (stadium.city_en) uniqueCities.add(stadium.city_en);
     }
@@ -162,7 +162,10 @@ function renderRutaCampeon(teamId) {
   const chipsDiv = document.getElementById("citiesChips");
   chipsDiv.innerHTML = "";
   uniqueCities.forEach(c => {
-    const s = document.createElement("span"); s.className = "city-chip"; s.textContent = c; chipsDiv.appendChild(s);
+    const s = document.createElement("span"); 
+    s.className = "city-chip"; 
+    s.textContent = c; 
+    chipsDiv.appendChild(s);
   });
   document.getElementById("citiesSection").classList.toggle("visible", !state.stadiumsError);
   document.getElementById("eyebrowCount").textContent = filteredGames.length;
@@ -524,153 +527,158 @@ function handleHttpError(status, retryFunction, endpointKey, bannerId) {
 /* ──────────────────────────────────────────────────────
    PETICIONES DE RED ASÍNCRONAS REVISADAS
 ────────────────────────────────────────────────────── */
-function loadStadiums() {
-  fetch(`${BASE}/get/stadiums`)
-    .then(res => { 
-      if (!res.ok) {
-        // Guardamos el código de estado HTTP para manejarlo en el catch
-        const error = new Error(`HTTP ${res.status}`);
-        error.status = res.status;
-        throw error;
-      } 
-      return res.json(); 
-    })
-    .then(data => {
-      state.stadiums = data.stadiums || [];
-      state.stadiumsError = false;
-      
-      // Éxito: reiniciamos el contador de fallos a 0
-      failures.stadiums = 0;
-      
-      localStorage.setItem("cache_stadiums", JSON.stringify(state.stadiums));
-      localStorage.setItem("cache_stadiums_is_stale", "false");
+/* ──────────────────────────────────────────────────────
+   PETICIONES DE RED ASÍNCRONAS CON ASYNC / AWAIT
+────────────────────────────────────────────────────── */
 
-      if (countdownIntervals.stadiums) clearInterval(countdownIntervals.stadiums);
-      const banner = document.getElementById("alertBanner");
-      if (banner) banner.classList.remove("visible");
+async function loadStadiums() {
+  try {
+    const res = await fetch(`${BASE}/get/stadiums`);
+    
+    // Si la respuesta HTTP no es exitosa (ej. 429, 500, 404)
+    if (!res.ok) {
+      const error = new Error(`HTTP ${res.status}`);
+      error.status = res.status;
+      throw error; // Esto nos envía directamente al bloque catch
+    }
 
-      const activeSection = document.querySelector(".nav-tab.active");
-      if (activeSection && activeSection.getAttribute("data-target") === "sectionEstadios") processEstadios();
-    })
-    .catch(err => {
-      state.stadiumsError = true;
-      
-      // Respaldo de caché local si existe
-      if (localStorage.getItem("cache_stadiums")) {
-        state.stadiums = JSON.parse(localStorage.getItem("cache_stadiums")) || [];
-        localStorage.setItem("cache_stadiums_is_stale", "true");
-        const activeSection = document.querySelector(".app-section:not(.app-section-hidden)");
-        if (activeSection && activeSection.id === "sectionEstadios") processEstadios();
-      }
+    const data = await res.json();
 
-      // Procesar error y programar el reintento con backoff acumulativo
-      const httpStatus = err.status || "NETWORK_ERROR";
-      handleHttpError(httpStatus, loadStadiums, "stadiums", "alertBanner");
-    });
+    state.stadiums = data.stadiums || [];
+    state.stadiumsError = false;
+    failures.stadiums = 0; // Reiniciamos fallos
+
+    localStorage.setItem("cache_stadiums", JSON.stringify(state.stadiums));
+    localStorage.setItem("cache_stadiums_is_stale", "false");
+
+    if (countdownIntervals.stadiums) clearInterval(countdownIntervals.stadiums);
+    const banner = document.getElementById("alertBanner");
+    if (banner) banner.classList.remove("visible");
+
+    const activeSection = document.querySelector(".nav-tab.active");
+    if (activeSection && activeSection.getAttribute("data-target") === "sectionEstadios") {
+      processEstadios();
+    }
+
+  } catch (err) {
+    state.stadiumsError = true;
+
+    // Respaldo de caché local si existe
+    if (localStorage.getItem("cache_stadiums")) {
+      state.stadiums = JSON.parse(localStorage.getItem("cache_stadiums")) || [];
+      localStorage.setItem("cache_stadiums_is_stale", "true");
+      const activeSection = document.querySelector(".app-section:not(.app-section-hidden)");
+      if (activeSection && activeSection.id === "sectionEstadios") processEstadios();
+    }
+
+    const httpStatus = err.status || "NETWORK_ERROR";
+    handleHttpError(httpStatus, loadStadiums, "stadiums", "alertBanner");
+  }
 }
 
-function loadTeams() {
-  fetch(`${BASE}/get/teams`)
-    .then(res => { 
-      if (!res.ok) {
-        const error = new Error(`HTTP ${res.status}`);
-        error.status = res.status;
-        throw error;
-      } 
-      return res.json(); 
-    })
-    .then(data => {
-      state.teams = data.teams || [];
-      state.teamsErrorBackoff = false;
-      
-      // Éxito: reiniciamos el contador de fallos a 0
-      failures.teams = 0;
+async function loadTeams() {
+  try {
+    const res = await fetch(`${BASE}/get/teams`);
 
-      localStorage.setItem("cache_teams", JSON.stringify(state.teams));
-      localStorage.setItem("cache_teams_is_stale", "false");
+    if (!res.ok) {
+      const error = new Error(`HTTP ${res.status}`);
+      error.status = res.status;
+      throw error;
+    }
 
-      if (countdownIntervals.teams) clearInterval(countdownIntervals.teams);
-      const banner = document.getElementById("teamsBackoffAlert");
-      if (banner) banner.classList.remove("visible");
-      
+    const data = await res.json();
+
+    state.teams = data.teams || [];
+    state.teamsErrorBackoff = false;
+    failures.teams = 0;
+
+    localStorage.setItem("cache_teams", JSON.stringify(state.teams));
+    localStorage.setItem("cache_teams_is_stale", "false");
+
+    if (countdownIntervals.teams) clearInterval(countdownIntervals.teams);
+    const banner = document.getElementById("teamsBackoffAlert");
+    if (banner) banner.classList.remove("visible");
+
+    populateTeamSelector();
+    processGoleadas();
+    processMuro();
+
+  } catch (err) {
+    state.teamsErrorBackoff = true;
+
+    if (localStorage.getItem("cache_teams")) {
+      state.teams = JSON.parse(localStorage.getItem("cache_teams")) || [];
+      localStorage.setItem("cache_teams_is_stale", "true");
       populateTeamSelector();
       processGoleadas();
-      processMuro();
-    })
-    .catch(err => {
-      state.teamsErrorBackoff = true;
-      
-      if (localStorage.getItem("cache_teams")) {
-        state.teams = JSON.parse(localStorage.getItem("cache_teams")) || [];
-        localStorage.setItem("cache_teams_is_stale", "true");
-        populateTeamSelector();
-        processGoleadas();
-      }
+    }
 
-      const httpStatus = err.status || "NETWORK_ERROR";
-      handleHttpError(httpStatus, loadTeams, "teams", "teamsBackoffAlert");
-    });
+    const httpStatus = err.status || "NETWORK_ERROR";
+    handleHttpError(httpStatus, loadTeams, "teams", "teamsBackoffAlert");
+  }
+}
+async function loadGames() {
+  try {
+    const res = await fetch(`${BASE}/get/games`);
+    if (!res.ok) {
+      const error = new Error(`HTTP ${res.status}`);
+      error.status = res.status;
+      throw error;
+    }
+
+    const data = await res.json();
+    state.games = data.games || [];
+    state.gamesErrorBackoff = false;
+    failures.games = 0;
+
+    localStorage.setItem("cache_games", JSON.stringify(state.games));
+    localStorage.setItem("cache_games_is_stale", "false");
+
+    if (countdownIntervals.games) clearInterval(countdownIntervals.games);
+    const banner = document.getElementById("estadiosErrorBanner");
+    if (banner) banner.classList.remove("visible");
+
+    renderizarModulosDependientesDeJuegos();
+  } catch (err) {
+    state.gamesErrorBackoff = true;
+
+    if (localStorage.getItem("cache_games")) {
+      state.games = JSON.parse(localStorage.getItem("cache_games")) || [];
+      localStorage.setItem("cache_games_is_stale", "true");
+      renderizarModulosDependientesDeJuegos();
+    }
+
+    const httpStatus = err.status || "NETWORK_ERROR";
+    handleHttpError(httpStatus, loadGames, "games", "estadiosErrorBanner");
+  }
 }
 
-function loadGamesAndGroups() {
-  fetch(`${BASE}/get/games`)
-    .then(res => { 
-      if (!res.ok) {
-        const error = new Error(`HTTP ${res.status}`);
-        error.status = res.status;
-        throw error;
-      } 
-      return res.json(); 
-    })
-    .then(data => {
-      state.games = data.games || [];
-      state.gamesErrorBackoff = false;
-      
-      // Éxito: reiniciamos el contador de fallos a 0
-      failures.games = 0;
+async function loadGroups() {
+  try {
+    const res = await fetch(`${BASE}/get/groups`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-      localStorage.setItem("cache_games", JSON.stringify(state.games));
-      localStorage.setItem("cache_games_is_stale", "false");
+    const data = await res.json();
+    state.groups = data.groups || [];
+    state.groupsErrorBackoff = false;
+    failures.groups = 0;
 
-      if (countdownIntervals.games) clearInterval(countdownIntervals.games);
-      const banner = document.getElementById("estadiosErrorBanner");
-      if (banner) banner.classList.remove("visible");
-
-      renderizarModulosDependientesDeJuegos();
-    })
-    .catch(err => {
-      state.gamesErrorBackoff = true;
-      
-      if (localStorage.getItem("cache_games")) {
-        state.games = JSON.parse(localStorage.getItem("cache_games")) || [];
-        localStorage.setItem("cache_games_is_stale", "true");
-        renderizarModulosDependientesDeJuegos();
-      }
-
-      const httpStatus = err.status || "NETWORK_ERROR";
-      handleHttpError(httpStatus, loadGamesAndGroups, "games", "estadiosErrorBanner");
-    });
-
-  fetch(`${BASE}/get/groups`)
-    .then(res => { 
-      if (!res.ok) throw new Error(); 
-      return res.json(); 
-    })
-    .then(data => { 
-      state.groups = data.groups || []; 
-      state.groupsErrorBackoff = false;
-      failures.groups = 0;
-      localStorage.setItem("cache_groups", JSON.stringify(state.groups));
-      localStorage.setItem("cache_groups_is_stale", "false");
+    localStorage.setItem("cache_groups", JSON.stringify(state.groups));
+    localStorage.setItem("cache_groups_is_stale", "false");
+    processMuro();
+  } catch (err) {
+    if (localStorage.getItem("cache_groups")) {
+      state.groups = JSON.parse(localStorage.getItem("cache_groups")) || [];
+      localStorage.setItem("cache_groups_is_stale", "true");
       processMuro();
-    })
-    .catch(() => {
-      if (localStorage.getItem("cache_groups")) {
-        state.groups = JSON.parse(localStorage.getItem("cache_groups")) || [];
-        localStorage.setItem("cache_groups_is_stale", "true");
-        processMuro();
-      }
-    });
+    }
+  }
+}
+
+// Función principal que dispara ambas en paralelo
+function loadGamesAndGroups() {
+  loadGames();
+  loadGroups();
 }
 
 // Función helper para refrescar módulos dependientes del canal de juegos de forma segura
